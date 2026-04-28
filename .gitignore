@@ -60,7 +60,7 @@ application-*.yml
 *.db
 *.sqlite
 *.h2.db
-
+# database-setup.sql
 ### Logs ###
 logs/
 *.log
@@ -83,6 +83,7 @@ test-results/
 coverage/
 
 ### Project-specific ###
-run.bat
-test-api-windows.bat
-mvnw.cmd
+# Scripts and setup files should be included in the repo
+# run.bat
+# test-api-windows.bat
+# mvnw.cmd

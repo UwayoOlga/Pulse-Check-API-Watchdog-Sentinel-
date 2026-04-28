@@ -15,11 +15,10 @@ public class AlertService {
     private static final Logger logger = LoggerFactory.getLogger(AlertService.class);
 
     public void fireAlert(Monitor monitor) {
+        // Alert format as per requirements
         Map<String, Object> alert = new HashMap<>();
         alert.put("ALERT", "Device " + monitor.getDeviceId() + " is down!");
         alert.put("time", LocalDateTime.now());
-        alert.put("email", monitor.getAlertEmail());
-        alert.put("lastHeartbeat", monitor.getLastHeartbeat());
 
         logger.error("CRITICAL ALERT: {}", alert);
         System.out.println(alert);

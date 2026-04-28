@@ -1,5 +1,6 @@
 package com.critmon.pulsecheck.service;
 
+import com.critmon.pulsecheck.exception.MonitorNotFoundException;
 import com.critmon.pulsecheck.model.Monitor;
 import com.critmon.pulsecheck.model.MonitorStatus;
 import com.critmon.pulsecheck.repository.MonitorRepository;
@@ -41,7 +42,7 @@ public class MonitorService {
 
     public void processHeartbeat(String deviceId) {
         Monitor monitor = getMonitor(deviceId)
-            .orElseThrow(() -> new IllegalArgumentException("Monitor not found for device: " + deviceId));
+            .orElseThrow(() -> new MonitorNotFoundException("Monitor not found for device: " + deviceId));
 
         if (monitor.getStatus() == MonitorStatus.PAUSED) {
             monitor.setStatus(MonitorStatus.ACTIVE);
@@ -59,7 +60,7 @@ public class MonitorService {
 
     public void pauseMonitor(String deviceId) {
         Monitor monitor = getMonitor(deviceId)
-            .orElseThrow(() -> new IllegalArgumentException("Monitor not found for device: " + deviceId));
+            .orElseThrow(() -> new MonitorNotFoundException("Monitor not found for device: " + deviceId));
 
         monitor.setStatus(MonitorStatus.PAUSED);
         monitorRepository.save(monitor);

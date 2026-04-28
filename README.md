@@ -57,16 +57,35 @@ stateDiagram-v2
 - **Maven 3.6+**
 - **Database**: H2 (In-memory for testing) or PostgreSQL (Production)
 
+### How to Run
+1. **Clone the repository**
+```bash
+git clone <your-repo-url>
+cd pulse-check-api
+```
+
+2. **Start the application**
+```bash
+mvn spring-boot:run
+```
+The API will start on `http://localhost:8080`
+
+3. **Test the API** (optional)
+```bash
+# On Linux/Mac
+./test-api.sh
+
+# On Windows
+test-api-windows.bat
+```
+
 ### Database Setup
 1. By default, the application uses **H2 In-Memory** database for easy testing.
 2. For PostgreSQL, update `src/main/resources/application.properties` with your credentials.
 3. Tables are created automatically on startup.
 
 ### Run the Application
-```bash
-mvn spring-boot:run
-```
-The API will start on `http://localhost:8080`
+The API will start on `http://localhost:8080` after running `mvn spring-boot:run`
 
 ---
 

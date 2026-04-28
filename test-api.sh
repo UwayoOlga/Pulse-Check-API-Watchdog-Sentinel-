@@ -43,7 +43,13 @@ echo -e "\n"
 
 sleep 2
 
-echo "7. Registering test device with 10s timeout (will trigger alert)..."
+echo "7. Testing 404 for non-existent device..."
+curl -X POST $BASE_URL/monitors/non-existent/heartbeat
+echo -e "\n"
+
+sleep 2
+
+echo "8. Registering test device with 10s timeout (will trigger alert)..."
 curl -X POST $BASE_URL/monitors \
   -H "Content-Type: application/json" \
   -d '{"id":"test-timeout","timeout":10,"alert_email":"test@example.com"}'
