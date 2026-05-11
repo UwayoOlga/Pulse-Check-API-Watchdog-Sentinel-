@@ -5,7 +5,7 @@ echo.
 set BASE_URL=http://localhost:8080
 
 echo 1. Registering monitor for device-123 with 60s timeout...
-curl -X POST %BASE_URL%/monitors -H "Content-Type: application/json" -d "{\"id\":\"device-123\",\"timeout\":60,\"alert_email\":\"admin@critmon.com\"}"
+curl -X POST %BASE_URL%/monitors -H "Content-Type: application/json" -d "{\"id\":\"device-123\",\"timeout\":60,\"alert_email\":\"timotyalan571@gmail.com\"}"
 echo.
 echo.
 
@@ -54,7 +54,7 @@ echo.
 timeout /t 2 /nobreak >nul
 
 echo 8. Registering test device with 10s timeout (will trigger alert)...
-curl -X POST %BASE_URL%/monitors -H "Content-Type: application/json" -d "{\"id\":\"test-timeout\",\"timeout\":10,\"alert_email\":\"test@example.com\"}"
+curl -X POST %BASE_URL%/monitors -H "Content-Type: application/json" -d "{\"id\":\"test-timeout\",\"timeout\":10,\"alert_email\":\"timotyalan571@gmail.com\"}"
 echo.
 echo.
 

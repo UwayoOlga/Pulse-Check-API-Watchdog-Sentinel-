@@ -1,7 +1,7 @@
 package com.critmon.pulsecheck.service;
 
-import com.critmon.pulsecheck.model.Monitor;
-import com.critmon.pulsecheck.model.MonitorStatus;
+import com.critmon.pulsecheck.domain.Monitor;
+import com.critmon.pulsecheck.domain.MonitorStatus;
 import com.critmon.pulsecheck.repository.MonitorRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,9 +33,9 @@ public class MonitorRecoveryService {
         for (Monitor monitor : activeMonitors) {
             try {
                 monitorService.startMonitoring(monitor);
-                logger.info("Recovered monitoring for device: {}", monitor.getDeviceId());
+                logger.info("Recovered monitoring for device: {}", monitor.getId());
             } catch (Exception e) {
-                logger.error("Failed to recover monitor for device: {}", monitor.getDeviceId(), e);
+                logger.error("Failed to recover monitor for device: {}", monitor.getId(), e);
             }
         }
 

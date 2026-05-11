@@ -1,10 +1,16 @@
 # Pulse Check API - Watchdog Sentinel
 
-A Dead Man's Switch API for monitoring remote devices. Devices register with a timeout period and must send heartbeats before the timer expires, or an alert is triggered.
+Pulse Check is a specialized backend service designed to act as a "Dead Man's Switch" for remote monitoring infrastructure. It provides real-time tracking for devices that must maintain periodic communication to prove they are still operational.
 
-## Architecture
+The system is built to handle scenarios where remote devices (like weather stations or solar farms) might go offline due to power loss or hardware failure without being able to send a final "goodbye" signal.
 
-### Logic Flow (Sequence Diagram)
+## System Architecture
+
+The core of the system relies on high-performance in-memory timers backed by a persistent database state to ensure reliability even across application restarts.
+
+### Logic Flow
+
+The following diagram illustrates how a device interacts with the sentinel to maintain its active status.
 
 ```mermaid
 sequenceDiagram
@@ -14,136 +20,128 @@ sequenceDiagram
     participant TimerManager
     participant AlertSystem
 
-    Note over Device, AlertSystem: Register Monitor
+    Note over Device, AlertSystem: Registration (ID is auto-generated)
     Device->>Controller: POST /monitors
     Controller->>Service: register(details)
     Service->>TimerManager: schedule(timeout)
     TimerManager-->>Service: timerStarted
-    Service-->>Controller: 201 Created
-    Controller-->>Device: 201 Created
+    Service-->>Controller: 201 Created (Returns ID)
+    Controller-->>Device: 201 Created (Returns ID)
 
-    Note over Device, AlertSystem: Heartbeat (Reset)
-    Device->>Controller: POST /heartbeat
-    Controller->>Service: reset(deviceId)
+    Note over Device, AlertSystem: Heartbeat (Timer Reset)
+    Device->>Controller: POST /heartbeat/{id}
+    Controller->>Service: reset(id)
     Service->>TimerManager: cancel()
     Service->>TimerManager: schedule(timeout)
     Service-->>Controller: 200 OK
     Controller-->>Device: 200 OK
 
-    Note over Device, AlertSystem: Timeout (Alert)
+    Note over Device, AlertSystem: Timeout (Trigger Alert)
     TimerManager->>Service: onTimeout()
     Service->>AlertSystem: fireAlert(device)
     AlertSystem->>AlertSystem: logCriticalError()
+    AlertSystem->>EmailServer: Send SMTP Alert
 ```
 
-### State Diagram
+### State Management
+
+Each monitor moves through a set of predefined states based on device activity and administrative actions.
 
 ```mermaid
 stateDiagram-v2
     [*] --> ACTIVE: Register Monitor
-    ACTIVE --> DOWN: Timeout Expires
+    ACTIVE --> DOWN: Timeout Expires / Sweeper catches stale
     ACTIVE --> PAUSED: POST /pause
     PAUSED --> ACTIVE: POST /heartbeat
     DOWN --> ACTIVE: POST /heartbeat
     ACTIVE --> ACTIVE: POST /heartbeat (Reset)
 ```
 
----
-
-## Quick Start
+## 🛠️ Getting Started
 
 ### Prerequisites
-- **Java 17** or higher
-- **Maven 3.6+**
-- **Database**: H2 (In-memory for testing) or PostgreSQL (Production)
 
-### How to Run
-1. **Clone the repository**
-```bash
-git clone <your-repo-url>
-cd pulse-check-api
+You will need the following tools installed on your machine:
+- **Java 17** Development Kit (JDK)
+- **Maven 3.6** or higher
+- A running **PostgreSQL** instance (only required for the production profile)
+
+### Configuration (.env)
+
+The system is designed to be secure. We use a `.env` file to store sensitive credentials so they are never pushed to GitHub.
+
+1. Create a `.env` file in the root directory.
+2. Add your SMTP credentials:
+   ```env
+   SPRING_MAIL_USERNAME=your-email@gmail.com
+   SPRING_MAIL_PASSWORD=your-16-digit-app-password
+   ```
+
+### Running the Application
+
+For local development using an in-memory H2 database:
+
+**Windows (PowerShell):**
+```powershell
+# Loads .env variables and starts the app
+Get-Content .env | Foreach-Object { $name, $value = $_.split('='); [System.Environment]::SetEnvironmentVariable($name, $value) }; .\mvnw spring-boot:run
 ```
 
-2. **Start the application**
+**Linux/Mac:**
 ```bash
-mvn spring-boot:run
-```
-The API will start on `http://localhost:8080`
-
-3. **Test the API** (optional)
-```bash
-# On Linux/Mac
-./test-api.sh
-
-# On Windows
-test-api-windows.bat
+export $(xargs <.env) && ./mvnw spring-boot:run
 ```
 
-### Database Setup
-1. By default, the application uses **H2 In-Memory** database for easy testing.
-2. For PostgreSQL, update `src/main/resources/application.properties` with your credentials.
-3. Tables are created automatically on startup.
+## 📡 API Specification
 
-### Run the Application
-The API will start on `http://localhost:8080` after running `mvn spring-boot:run`
-
----
-
-## API Documentation
-
-### 1. Register a Monitor
-Create a new watchdog timer for a device.
-- **Endpoint**: `POST /monitors`
-- **Body**:
+### 1. Register a New Monitor
+Registers a device. The server will assign a unique numeric ID.
+- **URL**: `POST /monitors`
+- **Payload**:
 ```json
 {
-  "id": "device-123",
   "timeout": 60,
-  "alert_email": "admin@critmon.com"
+  "alert_email": "admin@example.com"
 }
 ```
-- **Response**: `201 Created`
+- **Response**:
+```json
+{
+  "message": "Monitor created successfully with ID: 1"
+}
+```
 
-### 2. Send Heartbeat
-Reset the countdown timer.
-- **Endpoint**: `POST /monitors/{id}/heartbeat`
-- **Behavior**: If paused, it automatically resumes monitoring.
-- **Response**: `200 OK`
+### 2. Device Heartbeat
+Resets the timer for a specific device. If the device was previously paused, it will automatically resume.
+- **URL**: `POST /monitors/{id}/heartbeat`
 
-### 3. Pause Monitor
-Temporarily stop monitoring (e.g., for maintenance).
-- **Endpoint**: `POST /monitors/{id}/pause`
-- **Response**: `200 OK`
+### 3. Pause Monitoring
+Temporarily stops the watchdog timer for a device. Useful for scheduled maintenance.
+- **URL**: `POST /monitors/{id}/pause`
 
-### 4. Get All Down Monitors (Developer's Choice)
-List all devices that have timed out and are currently offline.
-- **Endpoint**: `GET /monitors/down`
-- **Response**: `200 OK` (JSON Array of Monitors)
+### 4. Fetch Offline Devices
+Returns a list of all devices that are currently in the **DOWN** state.
+- **URL**: `GET /monitors/down`
 
-### 5. Get Monitor Status
-Check the current state of a specific device.
-- **Endpoint**: `GET /monitors/{id}`
-- **Response**: `200 OK`
+### 5. Check Monitor Details
+Retrieves the full status and metadata for a specific monitor.
+- **URL**: `GET /monitors/{id}`
 
----
+## 🛡️ Enhanced Robustness (Developer's Choice)
 
-## Developer's Choice: Enhanced Reliability & Visibility
+### Stale Monitor Sweeper (The Safety Net)
+Primary heartbeat tracking relies on high-speed in-memory timers. However, to ensure 100% reliability, the **StaleMonitorSweeperService** runs every 60 seconds as a background safety net. It queries the database for any monitor marked as ACTIVE that has missed its window but lacks a live timer (e.g., after a crash), ensuring no device "falls through the cracks."
 
-I added two specific features to make the system more robust:
+### Automatic Maintenance Resume
+Technicians often forget to "unpause" a device after maintenance. Our system automatically resumes monitoring the moment any heartbeat is received for a paused device, ensuring the "human element" doesn't compromise safety.
 
-1.  **Auto-Resume on Heartbeat**:
-    - **Problem**: Technicians often forget to "unpause" a device after maintenance.
-    - **Solution**: The system automatically resumes monitoring the moment a heartbeat is received, ensuring no device is left unmonitored indefinitely.
+## 📁 Project Structure
 
-2.  **Down Devices Dashboard Endpoint (`/monitors/down`)**:
-    - **Problem**: Support teams need a quick way to see *all* failing devices without checking logs.
-    - **Solution**: A dedicated endpoint that returns a list of all monitors currently in the `DOWN` state.
+Organized into descriptive packages following standard Spring Boot conventions:
 
----
-
-## Project Structure
-- `controller/`: REST endpoints using specific, human-readable naming.
-- `service/`: Core business logic and timer management.
-- `model/`: Monitor entity and status definitions.
-- `dto/`: Clean data transfer objects for API requests/responses.
-- `recovery/`: Automatic timer resumption after application restarts.
+- **api**: REST controllers and request handling.
+- **domain**: JPA entities and core data models.
+- **dto**: Data Transfer Objects for API requests/responses.
+- **service**: Business logic (Timer management, Alerting, Sweeper).
+- **repository**: Database access layer (Spring Data JPA).
+- **exception**: Centralized error handling.

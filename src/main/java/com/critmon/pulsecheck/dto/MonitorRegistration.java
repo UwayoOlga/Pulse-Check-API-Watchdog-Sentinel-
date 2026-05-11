@@ -7,9 +7,6 @@ import jakarta.validation.constraints.NotBlank;
 
 public class MonitorRegistration {
 
-    @NotBlank(message = "Device ID is required")
-    private String id;
-
     @Min(value = 1, message = "Timeout must be at least 1 second")
     private int timeout;
 
@@ -17,14 +14,6 @@ public class MonitorRegistration {
     @Email(message = "Invalid email format")
     @JsonProperty("alert_email")
     private String alertEmail;
-
-    public String getId() {
-        return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
 
     public int getTimeout() {
         return timeout;

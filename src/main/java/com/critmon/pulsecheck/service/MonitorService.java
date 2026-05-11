@@ -1,14 +1,16 @@
 package com.critmon.pulsecheck.service;
 
 import com.critmon.pulsecheck.exception.MonitorNotFoundException;
-import com.critmon.pulsecheck.model.Monitor;
-import com.critmon.pulsecheck.model.MonitorStatus;
+import com.critmon.pulsecheck.domain.Monitor;
+import com.critmon.pulsecheck.domain.MonitorStatus;
 import com.critmon.pulsecheck.repository.MonitorRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @Service
@@ -20,33 +22,33 @@ public class MonitorService {
     private final TimerSchedulerService timerScheduler;
     private final AlertService alertService;
 
-    public MonitorService(MonitorRepository monitorRepository, TimerSchedulerService timerScheduler, AlertService alertService) {
+    public MonitorService(MonitorRepository monitorRepository,
+                          TimerSchedulerService timerScheduler,
+                          AlertService alertService) {
         this.monitorRepository = monitorRepository;
         this.timerScheduler = timerScheduler;
         this.alertService = alertService;
     }
 
-    public Monitor registerMonitor(String deviceId, int timeoutSeconds, String alertEmail) {
-        if (monitorRepository.existsById(deviceId)) {
-            throw new IllegalArgumentException("Monitor already exists for device: " + deviceId);
-        }
-
-        Monitor monitor = new Monitor(deviceId, timeoutSeconds, alertEmail);
+    @Transactional
+    public Monitor registerMonitor(int timeoutSeconds, String alertEmail) {
+        Monitor monitor = new Monitor(timeoutSeconds, alertEmail);
         monitor = monitorRepository.save(monitor);
-
         startMonitoring(monitor);
 
-        logger.info("Monitor registered for device: {}", deviceId);
+        logger.info("Registered monitor with generated ID: {}", monitor.getId());
         return monitor;
     }
 
-    public void processHeartbeat(String deviceId) {
-        Monitor monitor = getMonitor(deviceId)
-            .orElseThrow(() -> new MonitorNotFoundException("Monitor not found for device: " + deviceId));
+    @Transactional
+    public void processHeartbeat(Long id) {
+        Objects.requireNonNull(id, "ID is required");
+
+        Monitor monitor = monitorRepository.findById(id)
+            .orElseThrow(() -> new MonitorNotFoundException("Monitor not found: " + id));
 
         if (monitor.getStatus() == MonitorStatus.PAUSED) {
-            monitor.setStatus(MonitorStatus.ACTIVE);
-            logger.info("Monitor resumed from pause: {}", deviceId);
+            logger.info("Resuming paused monitor: {}", id);
         }
 
         monitor.updateHeartbeat();
@@ -54,47 +56,52 @@ public class MonitorService {
         monitorRepository.save(monitor);
 
         startMonitoring(monitor);
-
-        logger.info("Heartbeat received for device: {}", deviceId);
+        logger.info("Heartbeat received for: {}", id);
     }
 
-    public void pauseMonitor(String deviceId) {
-        Monitor monitor = getMonitor(deviceId)
-            .orElseThrow(() -> new MonitorNotFoundException("Monitor not found for device: " + deviceId));
+    @Transactional
+    public void pauseMonitor(Long id) {
+        Objects.requireNonNull(id, "ID is required");
+
+        Monitor monitor = monitorRepository.findById(id)
+            .orElseThrow(() -> new MonitorNotFoundException("Monitor not found: " + id));
 
         monitor.setStatus(MonitorStatus.PAUSED);
         monitorRepository.save(monitor);
-        timerScheduler.cancelTimer(deviceId);
+        timerScheduler.cancelTimer(id);
 
-        logger.info("Monitor paused for device: {}", deviceId);
+        logger.info("Monitor paused: {}", id);
     }
 
-    public Optional<Monitor> getMonitor(String deviceId) {
-        return monitorRepository.findById(deviceId);
+    @Transactional(readOnly = true)
+    public Optional<Monitor> getMonitor(Long id) {
+        return id == null ? Optional.empty() : monitorRepository.findById(id);
     }
 
-    public void startMonitoring(Monitor monitor) {
-        timerScheduler.scheduleTimeout(
-            monitor.getDeviceId(),
-            monitor.getTimeoutSeconds(),
-            () -> handleTimeout(monitor.getDeviceId())
-        );
-    }
-
+    @Transactional(readOnly = true)
     public List<Monitor> getDownMonitors() {
         return monitorRepository.findByStatus(MonitorStatus.DOWN);
     }
 
-    private void handleTimeout(String deviceId) {
-        Optional<Monitor> monitorOpt = monitorRepository.findById(deviceId);
-        if (monitorOpt.isPresent()) {
-            Monitor monitor = monitorOpt.get();
+    public void startMonitoring(Monitor monitor) {
+        timerScheduler.scheduleTimeout(
+            monitor.getId(),
+            monitor.getTimeoutSeconds(),
+            () -> handleTimeout(monitor.getId())
+        );
+    }
+
+    @Transactional
+    public void handleTimeout(Long id) {
+        if (id == null) return;
+
+        monitorRepository.findById(id).ifPresent(monitor -> {
             if (monitor.getStatus() == MonitorStatus.ACTIVE) {
                 monitor.setStatus(MonitorStatus.DOWN);
                 monitorRepository.save(monitor);
                 alertService.fireAlert(monitor);
-                logger.warn("Device timeout: {}", deviceId);
+                logger.warn("Device timeout: {}", id);
             }
-        }
+        });
     }
 }

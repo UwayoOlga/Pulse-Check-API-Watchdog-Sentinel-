@@ -1,4 +1,4 @@
-package com.critmon.pulsecheck.model;
+package com.critmon.pulsecheck.domain;
 
 public enum MonitorStatus {
     ACTIVE,

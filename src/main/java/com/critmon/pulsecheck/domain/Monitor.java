@@ -1,5 +1,6 @@
-package com.critmon.pulsecheck.model;
+package com.critmon.pulsecheck.domain;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
@@ -8,29 +9,34 @@ import java.time.LocalDateTime;
 public class Monitor {
 
     @Id
-    private String deviceId;
-    
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @JsonProperty("device_id")
+    private Long id;
+
     @Column(nullable = false)
+    @JsonProperty("timeout_seconds")
     private int timeoutSeconds;
-    
+
     @Column(nullable = false)
+    @JsonProperty("alert_email")
     private String alertEmail;
-    
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private MonitorStatus status;
-    
+
     @Column(nullable = false)
+    @JsonProperty("last_heartbeat")
     private LocalDateTime lastHeartbeat;
-    
+
     @Column(nullable = false)
+    @JsonProperty("created_at")
     private LocalDateTime createdAt;
 
     public Monitor() {
     }
 
-    public Monitor(String deviceId, int timeoutSeconds, String alertEmail) {
-        this.deviceId = deviceId;
+    public Monitor(int timeoutSeconds, String alertEmail) {
         this.timeoutSeconds = timeoutSeconds;
         this.alertEmail = alertEmail;
         this.status = MonitorStatus.ACTIVE;
@@ -38,8 +44,8 @@ public class Monitor {
         this.lastHeartbeat = LocalDateTime.now();
     }
 
-    public String getDeviceId() {
-        return deviceId;
+    public Long getId() {
+        return id;
     }
 
     public int getTimeoutSeconds() {

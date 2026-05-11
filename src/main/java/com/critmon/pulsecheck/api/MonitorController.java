@@ -1,8 +1,8 @@
-package com.critmon.pulsecheck.controller;
+package com.critmon.pulsecheck.api;
 
 import com.critmon.pulsecheck.dto.MessageResponse;
 import com.critmon.pulsecheck.dto.MonitorRegistration;
-import com.critmon.pulsecheck.model.Monitor;
+import com.critmon.pulsecheck.domain.Monitor;
 import com.critmon.pulsecheck.service.MonitorService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -23,19 +23,18 @@ public class MonitorController {
 
     @PostMapping
     public ResponseEntity<MessageResponse> registerMonitor(@Valid @RequestBody MonitorRegistration registration) {
-        monitorService.registerMonitor(
-            registration.getId(),
+        Monitor monitor = monitorService.registerMonitor(
             registration.getTimeout(),
             registration.getAlertEmail()
         );
 
         return ResponseEntity
             .status(HttpStatus.CREATED)
-            .body(new MessageResponse("Monitor created successfully for device: " + registration.getId()));
+            .body(new MessageResponse("Monitor created successfully with ID: " + monitor.getId()));
     }
 
     @PostMapping("/{id}/heartbeat")
-    public ResponseEntity<MessageResponse> sendHeartbeat(@PathVariable String id) {
+    public ResponseEntity<MessageResponse> sendHeartbeat(@PathVariable Long id) {
         monitorService.processHeartbeat(id);
 
         return ResponseEntity
@@ -43,7 +42,7 @@ public class MonitorController {
     }
 
     @PostMapping("/{id}/pause")
-    public ResponseEntity<MessageResponse> pauseMonitor(@PathVariable String id) {
+    public ResponseEntity<MessageResponse> pauseMonitor(@PathVariable Long id) {
         monitorService.pauseMonitor(id);
 
         return ResponseEntity
@@ -56,7 +55,7 @@ public class MonitorController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Monitor> getMonitor(@PathVariable String id) {
+    public ResponseEntity<Monitor> getMonitor(@PathVariable Long id) {
         return monitorService.getMonitor(id)
             .map(ResponseEntity::ok)
             .orElse(ResponseEntity.notFound().build());

@@ -60,7 +60,7 @@ application-*.yml
 *.db
 *.sqlite
 *.h2.db
-# database-setup.sql
+database-setup.sql
 ### Logs ###
 logs/
 *.log
